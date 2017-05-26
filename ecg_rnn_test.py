@@ -139,6 +139,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.initialize_all_variables()
 
+saver = tf.train.Saver()
+
 with tf.Session() as session:
     session.run(init)
     summary_writer = tf.train.SummaryWriter('/tmp/logdir', session.graph)
@@ -179,6 +181,9 @@ with tf.Session() as session:
     except tf.errors.OutOfRangeError:
         print ('Done training -- epoch limit reached')
     finally:
+        save_path="ecg_rnn_model.ckpt"
+        saver.save(session, save_path)
+
         coord.request_stop()
         session.close()
         print("Optimization Finished!")
