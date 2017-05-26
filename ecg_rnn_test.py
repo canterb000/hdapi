@@ -139,10 +139,10 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.initialize_all_variables()
 
-saver = tf.train.Saver()
 
 with tf.Session() as session:
     session.run(init)
+    saver = tf.train.Saver()
     summary_writer = tf.train.SummaryWriter('/tmp/logdir', session.graph)
     step = 0
     end_offset = n_input + 1
