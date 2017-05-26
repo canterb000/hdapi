@@ -139,9 +139,13 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.initialize_all_variables()
 
+tf.summary.scalar('loss', cost) 
+tf.summary.scalar('accuracy',accuracy) 
+merged_summary_op = tf.summary.merge_all()
 
 with tf.Session() as session:
     session.run(init)
+    summary_writer = tf.train.SummaryWriter('/tmp/logdir', session.graph)
     step = 0
     end_offset = n_input + 1
     acc_total = 0
@@ -152,6 +156,10 @@ with tf.Session() as session:
 
     try:
         while not coord.should_stop():
+            summary_str = sess.run(merged_summary_op)
+            summary_writer.add_summary(summary_str,step)
+
+
             x_tr, y_tr = session.run([test_batch_features, test_batch_labels])
 
             x_r, y_r = session.run([batch_features, batch_labels])
