@@ -26,7 +26,6 @@ def elapsed(sec):
 
 # Target log path
 logs_path = '/tmp/tensorflow/logs'
-writer = tf.summary.FileWriter(logs_path)
 
 # Text file containing words for training
 #training_file = 'signal.txt'
@@ -53,9 +52,6 @@ def read_and_decode(filename_queue):
 
     return label_out, feature_out
 
-
-
-
 #input 
 filename_queue = tf.train.string_input_producer(["train.tfrecords"])
  
@@ -68,11 +64,9 @@ label, features = read_and_decode(filename_queue)
 batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
 
 
-
-
 # Parameters
 learning_rate = 0.001
-training_iters = 12000
+training_iters = 2000
 display_step = 1000
 n_input = 500
 
@@ -82,16 +76,22 @@ vocab_size = NUM_CLASS
 
 
 # tf Graph input
-x = tf.placeholder("float", [None, n_input])
-y = tf.placeholder("float", [None, NUM_CLASS])
+x = tf.placeholder("float", [None, n_input], name = "x")
+y = tf.placeholder("float", [None, NUM_CLASS], name = "y")
 
 # RNN output node weights and biases
-weights = {
-    'out': tf.Variable(tf.random_normal([n_hidden, vocab_size]))
-}
-biases = {
-    'out': tf.Variable(tf.random_normal([vocab_size]))
-}
+#weights = {
+#    'out': tf.Variable(tf.random_normal([n_hidden, vocab_size]), name = "weights")
+#}
+#biases = {
+#    'out': tf.Variable(tf.random_normal([vocab_size]), name = "biases")
+#}
+
+weights = tf.Variable(tf.random_normal([n_hidden, vocab_size]), name = "weights")
+
+biases = tf.Variable(tf.random_normal([vocab_size]), name = "biases")
+
+pred = tf.Variable("float", [None, vocab_size], name = "pred")
 
 def RNN(x, weights, biases):
 
@@ -116,7 +116,8 @@ def RNN(x, weights, biases):
 
     # there are n_input outputs but
     # we only want the last output
-    return tf.matmul(outputs[-1], weights['out']) + biases['out']
+#    return tf.matmul(outputs[-1], weights['out']) + biases['out']
+    return tf.matmul(outputs[-1], weights) + biases
 
 pred = RNN(x, weights, biases)
 
@@ -136,14 +137,16 @@ test_batch_labels, test_batch_features = tf.train.shuffle_batch([t_label, t_feat
 correct_pred = tf.equal(tf.argmax(pred,1), tf.argmax(y,1))
 accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
+
+
 # Initializing the variables
 init = tf.initialize_all_variables()
 
 
 with tf.Session() as session:
+
     session.run(init)
     saver = tf.train.Saver()
-    summary_writer = tf.train.SummaryWriter('/tmp/logdir', session.graph)
     step = 0
     end_offset = n_input + 1
     acc_total = 0
@@ -152,11 +155,14 @@ with tf.Session() as session:
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=session, coord=coord)
 
+    print("pred")
+    print(pred)
     try:
         while not coord.should_stop():
             x_tr, y_tr = session.run([test_batch_features, test_batch_labels])
-
-            x_r, y_r = session.run([batch_features, batch_labels])
+            print("*****************************************")
+            print (batch_features)
+	    x_r, y_r = session.run([batch_features, batch_labels])
             _, loss, onehot_pred = session.run([optimizer, cost, pred], \
                                                 feed_dict={x: x_r, y: y_r})
 
@@ -176,13 +182,12 @@ with tf.Session() as session:
             step += 1
 
             if step > training_iters:
+                saver.save(session, 'my_test_model')
                 break
 
     except tf.errors.OutOfRangeError:
         print ('Done training -- epoch limit reached')
     finally:
-        save_path="ecg_rnn_model.ckpt"
-        saver.save(session, save_path)
 
         coord.request_stop()
         session.close()
