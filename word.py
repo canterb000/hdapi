@@ -47,6 +47,8 @@ class WordLM(object):
         lm_cell = tf.contrib.rnn.MultiRNNCell([cell, cell2])
        
         self._initial_lm_state = lm_cell.zero_state(batch_size, tf.float32)
+	print("wordlm init lm state:*************") 
+	print(self._initial_lm_state)
         with tf.device("/cpu:0"):
             embedding = tf.get_variable("embedding", [word_vocab_size, rnn_size])
             inputs = tf.nn.embedding_lookup(embedding, self._input_data)

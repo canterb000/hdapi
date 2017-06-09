@@ -60,6 +60,7 @@ def run_epoch(session, m, data, data_loader, eval_op, verbose=False):
     costs = 0.0
     iters = 0
     state = m.initial_lm_state
+    print ("initial lm state:")
     print state
     print state[0]
     print state[0].eval()  

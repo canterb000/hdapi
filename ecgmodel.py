@@ -31,11 +31,23 @@ class RNNMODEL(object):
 
 		# 2-layer LSTM, each layer has n_hidden units.
 		# Average Accuracy= 95.20% at 50k iter
-		rnn_cell = rnn.MultiRNNCell([rnn.BasicLSTMCell(n_hidden, reuse = tf.get_variable_scope().reuse),rnn.BasicLSTMCell(n_hidden, reuse = tf.get_variable_scope().reuse)])
+		rnn_cell = rnn.MultiRNNCell([rnn.BasicLSTMCell(n_hidden, state_is_tuple=False, reuse = tf.get_variable_scope().reuse),rnn.BasicLSTMCell(n_hidden, state_is_tuple=False, reuse = tf.get_variable_scope().reuse)])
+		'''
+	        cell_fn = rnn.BasicLSTMCell
+
+        	cell = cell_fn(n_hidden, forget_bias=0.0, state_is_tuple=False, reuse = tf.get_variable_scope().reuse)
+        	cell2 = cell_fn(n_hidden, forget_bias=0.0, state_is_tuple=False, reuse = tf.get_variable_scope().reuse)
+
+        	if is_training and args.keep_prob < 1:
+            		cell = tf.contrib.rnn.DropoutWrapper(cell, output_keep_prob=args.keep_prob)
+            		cell2 = tf.contrib.rnn.DropoutWrapper(cell2, output_keep_prob=args.keep_prob)
+        	rnn_cell = tf.contrib.rnn.MultiRNNCell([cell, cell2])
+		'''
 		batch_size = 10
 		self._initial_lm_state = rnn_cell.zero_state(batch_size, tf.float32)
-
 		print ("init2")
+		print(self._initial_lm_state)
+
 		# generate prediction
 		self.outputs, self.states = rnn.static_rnn(rnn_cell, self.x_split, dtype=tf.float32)
 
@@ -68,6 +80,11 @@ class RNNMODEL(object):
 	@property
 	def cost(self):
 		return self._cost
+
+        @property
+        def acc(self):
+                return self.accuracy
+
 
 	@property
 	def train_op(self):

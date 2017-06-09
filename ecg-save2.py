@@ -49,6 +49,9 @@ def read_and_decode(filename_queue):
     feature_out = features["signal"]
 
     return label_out, feature_out
+
+
+'''
 #input 
 filename_queue = tf.train.string_input_producer(["train.tfrecords"])
  
@@ -58,8 +61,7 @@ min_after_dequeue = 8
 capacity = min_after_dequeue + 3 * batchSize
 num_threads = 1
 label, features = read_and_decode(filename_queue)
-batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
-
+'''
 
 
 
@@ -124,10 +126,24 @@ m = RNNMODEL
 save_dir = args.save_dir
 
 
-print ("check1")
 with tf.Graph().as_default(), tf.Session() as sess:
 	initializer = tf.random_uniform_initializer(-args.init_scale, args.init_scale)
 
+
+
+
+
+	#input 
+	filename_queue = tf.train.string_input_producer(["train.tfrecords"])
+
+
+	batchSize = 10
+	min_after_dequeue = 8
+	capacity = min_after_dequeue + 3 * batchSize
+	num_threads = 1
+	label, features = read_and_decode(filename_queue)
+
+	batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
 
 
 	# Build models
@@ -136,10 +152,15 @@ with tf.Graph().as_default(), tf.Session() as sess:
 	with tf.variable_scope("model", reuse=True, initializer=initializer):
 	    mdev = m(args, is_training=False)
 
-	print ("check2")
+
         saver = tf.train.Saver(tf.all_variables(), max_to_keep=1)
         tf.initialize_all_variables().run()
         dev_pp = 10000000.0
+
+	state = mtrain.initial_lm_state
+        state_input0 = state[0].eval()
+        state_input1 = state[1].eval()
+        state = [state_input0, state_input1]
 
 
         e = 0
@@ -147,39 +168,35 @@ with tf.Graph().as_default(), tf.Session() as sess:
         learning_rate = args.learning_rate
 
 
-	print ("check3")
 	step = 0
 
 	coord = tf.train.Coordinator()
 	threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
+	acc_total = 0
 	try:
 	    while not coord.should_stop():
 		step += 1
 
-		print (batch_features)
 
 		x_r, y_r = sess.run([batch_features, batch_labels])
 
 		costs = 0.0
 		iters = 0
-		state = m.initial_lm_state
-		print ("step %s "% step)
-
-		cost, state, _ = sess.run([m.cost, m.final_state, m.train_op],
-				             {m.input_data: x_r,
-				              m.targets: y_r,
-				              m.initial_lm_state: state})
-
-		costs += cost
-		iters += 1
-
-		if verbose and step % (epoch_size // 10) == 10:
-		    print("%.3f perplexity: %.3f speed: %.0f wps" %
-			  (step * 1.0 / epoch_size, np.exp(costs / iters),
-			   iters * m.batch_size / (time.time() - start_time)))
+		acc, state, _ = sess.run([mtrain.acc, mtrain.final_state, mtrain.train_op],
+				             {mtrain.input_data: x_r,
+				              mtrain.targets: y_r,
+				              mtrain.initial_lm_state: state})
 
 
+	        acc_total += acc
+
+
+                if (step+1) % 1000 == 0:
+                	print("Iter= " + str(step+1) + \
+                 	  ", Average Accuracy= " + \
+                   	  "{:.2f}%".format((100 * acc_total / display_step)))
+                acc_total = 0
+            
 		'''
             if dev_pp > dev_perplexity:
                 print "Achieve highest perplexity on dev set, save model."
