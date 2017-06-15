@@ -16,7 +16,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_file', type=str, default='data/tinyshakespeare/train.txt',
                         help="training data")
-    parser.add_argument('--dev_file', type=str, default='data/tinyshakespeare/dev.txt',
+    #parser.add_argument('--dev_file', type=str, default='data/tinyshakespeare/dev.txt',
+    parser.add_argument('--dev_file', type=str, default='data/tinyshakespeare/test.txt',
                         help="development data")
     parser.add_argument('--output', '-o', type=str, default='train.log',
                         help='output file')
@@ -94,8 +95,8 @@ def train(args):
     except:
         os.mkdir(save_dir)
 
-    with open(os.path.join(args.save_dir, 'config.pkl'), 'w') as f:
-        cPickle.dump(args, f)
+#    with open(os.path.join(args.save_dir, 'config.pkl'), 'w') as f:
+#        cPickle.dump(args, f)
 
     data_loader = TextLoader(args)
     train_data = data_loader.train_data
@@ -146,7 +147,7 @@ def train(args):
             train_perplexity = run_epoch(sess, mtrain, train_data, data_loader, mtrain.train_op, verbose=True)
             print("Train Perplexity: %.3f" % train_perplexity)
 
-            dev_perplexity = run_epoch(sess, mdev, dev_data, data_loader, tf.no_op())
+            dev_perplexity = run_epoch(sess, mdev, dev_data, data_loader, tf.no_op(), verbose=True)
             print("Valid Perplexity: %.3f" % dev_perplexity)
 
             # write results to file
@@ -158,7 +159,7 @@ def train(args):
 
             if dev_pp > dev_perplexity:
                 print "Achieve highest perplexity on dev set, save model."
-                checkpoint_path = os.path.join(save_dir, 'model.ckpt')
+                checkpoint_path = os.path.join(save_dir, 'modelkkk.ckpt')
                 saver.save(sess, checkpoint_path, global_step=e)
                 print "model saved to {}".format(checkpoint_path)
                 dev_pp = dev_perplexity

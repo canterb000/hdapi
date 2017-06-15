@@ -78,9 +78,9 @@ vocab_size = NUM_CLASS
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--n_input', type=int, default='500',
+parser.add_argument('--n_input', type=int, default='500',  #500
                 help="input length")
-parser.add_argument('--n_hidden', type=int, default='50',
+parser.add_argument('--n_hidden', type=int, default='10', #50
                 help="hidden layer")
 parser.add_argument('--num_class', type=int, default='12',
                 help="label class")
@@ -173,11 +173,11 @@ with tf.Graph().as_default(), tf.Session() as sess:
 	threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 	acc_total = 0
 	dacc_total = 0
+	printonce = False
 	try:
 	    while not coord.should_stop():
 		x_r, y_r = sess.run([batch_features, batch_labels])
 		acc, state, _ = sess.run([mtrain.acc, mtrain.final_state, mtrain.train_op],
-		#acc, state = sess.run([mtrain.acc, mtrain.final_state],
 				             {mtrain.input_data: x_r,
 				              mtrain.targets: y_r,
 				              mtrain.initial_lm_state: state})
@@ -189,12 +189,21 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
                 x_dr, y_dr = sess.run([dbatch_features, dbatch_labels])
                 dacc, dstate = sess.run([mdev.acc, mdev.final_state],
-                                             {mdev.input_data: x_r,
-                                              mdev.targets: y_r,
+                                             {mdev.input_data: x_dr,
+                                              mdev.targets: y_dr,
                                               mdev.initial_lm_state: dstate})
 
                 dacc_total += dacc
 
+
+		if printonce:
+			print("**************x_r*************")
+			print(x_r)
+			print("*************state + dstate*************")
+			print(state)
+			print(dstate)
+			printonce=False
+		
 
                 if (step + 1) % display_step == 0:
                 	print("Iter= " + str(step + 1) + \
@@ -222,6 +231,7 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
 		if step > training_iters:
 	                checkpoint_path = os.path.join(save_dir, 'model.ckpt')
+			print(mtrain.output_weights.eval())
 	                saver.save(sess, checkpoint_path)
 			break
 

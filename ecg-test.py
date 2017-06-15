@@ -10,7 +10,6 @@ import random
 import collections
 import time
 import argparse
-import os
 from ecgmodel import RNNMODEL
 
 
@@ -68,19 +67,18 @@ label, features = read_and_decode(filename_queue)
 
 # Parameters
 learning_rate = 0.001
-training_iters = 2000
+training_iters = 12000
 display_step = 1000
 n_input = 500
 
 # number of units in RNN cell
-n_hidden = 5 # 50
 vocab_size = NUM_CLASS
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--n_input', type=int, default='500',
                 help="input length")
-parser.add_argument('--n_hidden', type=int, default='50',
+parser.add_argument('--n_hidden', type=int, default='10',
                 help="hidden layer")
 parser.add_argument('--num_class', type=int, default='12',
                 help="label class")
@@ -122,89 +120,76 @@ parser.add_argument('--optimization', type=str, default='sgd',
                 help='sgd, momentum, or adagrad')
 args = parser.parse_args()
 
+
+
 m = RNNMODEL
 
-save_dir = args.save_dir
-
-
+print ("Begin testing...")
+# If using gpu:
+# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
+# gpu_config = tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options)
+# add parameters to the tf session -> tf.Session(config=gpu_config)
 with tf.Graph().as_default(), tf.Session() as sess:
 	initializer = tf.random_uniform_initializer(-args.init_scale, args.init_scale)
-
-	#input 
-	filename_queue = tf.train.string_input_producer(["train.tfrecords"])
-	filename_queue_dev = tf.train.string_input_producer(["test.tfrecords"])
-
-
-
-	batchSize = 10
-	min_after_dequeue = 8
-	capacity = min_after_dequeue + 3 * batchSize
-	num_threads = 1
-	label, features = read_and_decode(filename_queue)
-
-	batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
-
-        dlabel, dfeatures = read_and_decode(filename_queue_dev)
-
-        dbatch_labels, dbatch_features = tf.train.shuffle_batch([dlabel, dfeatures], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
-
-
-
-	# Build models
 	with tf.variable_scope("model", reuse=None, initializer=initializer):
-	    mtrain = m(args, is_training=True)
-	with tf.variable_scope("model", reuse=True, initializer=initializer):
-	    mdev = m(args, is_training=False)
+		mtest = m(args, is_training=False, is_testing=True)
+
+	# save only the last model
+	saver = tf.train.Saver(tf.all_variables())
+	tf.initialize_all_variables().run()
+	ckpt = tf.train.get_checkpoint_state(args.save_dir)
+	print("ckpt...........args.save_dir: %s"%args.save_dir)
+	print(ckpt)
+	if ckpt and ckpt.model_checkpoint_path:
+		saver.restore(sess, ckpt.model_checkpoint_path)
+		print("saver restoring...")
+		print(mtest.output_weights.eval())
+	#***************************************************************JUST FOR DEBUG, WITH ALL VAR DELETED
+	#tf.initialize_all_variables().run()
+        #input 
+        #filename_queue = tf.train.string_input_producer(["test.tfrecords"])
+        filename_queue = tf.train.string_input_producer(["test.tfrecords"])
+	
+
+        batchSize = 10
+        min_after_dequeue = 8
+        capacity = min_after_dequeue + 3 * batchSize
+        num_threads = 1
+        label, features = read_and_decode(filename_queue)
+
+        batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
 
 
-        saver = tf.train.Saver(tf.all_variables(), max_to_keep=1)
-        tf.initialize_all_variables().run()
-        dev_pp = 10000000.0
-
-	state = mtrain.initial_lm_state
+	state = mtest.initial_lm_state
         state_input0 = state[0].eval()
         state_input1 = state[1].eval()
         state = [state_input0, state_input1]
-	dstate = state
-
+	print("*****************************initial state:")
+	#print(mtest.initial_lm_state[1].eval())
 	step = 0
 
 	coord = tf.train.Coordinator()
 	threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 	acc_total = 0
-	dacc_total = 0
 	try:
 	    while not coord.should_stop():
 		x_r, y_r = sess.run([batch_features, batch_labels])
-		acc, state, _ = sess.run([mtrain.acc, mtrain.final_state, mtrain.train_op],
-		#acc, state = sess.run([mtrain.acc, mtrain.final_state],
-				             {mtrain.input_data: x_r,
-				              mtrain.targets: y_r,
-				              mtrain.initial_lm_state: state})
+
+		costs = 0.0
+		iters = 0
+		acc, state = sess.run([mtest.acc, mtest.final_state],
+				             {mtest.input_data: x_r,
+				              mtest.targets: y_r,
+				              mtest.initial_lm_state: state})
+
 
 	        acc_total += acc
 
-
-
-
-                x_dr, y_dr = sess.run([dbatch_features, dbatch_labels])
-                dacc, dstate = sess.run([mdev.acc, mdev.final_state],
-                                             {mdev.input_data: x_r,
-                                              mdev.targets: y_r,
-                                              mdev.initial_lm_state: dstate})
-
-                dacc_total += dacc
-
-
-                if (step + 1) % display_step == 0:
-                	print("Iter= " + str(step + 1) + \
+                if (step+1) % display_step == 0:
+                	print("TEST:***  Iter= " + str(step+1) + \
                  	  ", Average Accuracy= " + \
-                   	  "{:.2f}%".format((100 * acc_total / display_step)) + \
-                          ", Dev Average Accuracy= " + \
-                          "{:.2f}%".format((100 * dacc_total / display_step)))
-
+                   	  "{:.2f}%".format((100 * acc_total / display_step)))
                 	acc_total = 0
-			dacc_total = 0
 		step += 1
             
 		'''
@@ -221,17 +206,13 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
 
 		if step > training_iters:
-	                checkpoint_path = os.path.join(save_dir, 'model.ckpt')
-	                saver.save(sess, checkpoint_path)
 			break
 
 	except tf.errors.OutOfRangeError:
 		print ('Done training -- epoch limit reached')
 	finally:
-		print("*******************final state:********************")
-		#print(state)
 		coord.request_stop()
 		sess.close()
-		print("Optimization Finished!")
+		print("Test Finished!")
 		print("Elapsed time: ", elapsed(time.time() - start_time))
 

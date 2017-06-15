@@ -65,10 +65,10 @@ class WordLM(object):
         lm_outputs = tf.concat(lm_outputs, 1)
         lm_outputs = tf.reshape(lm_outputs, [-1, rnn_size])
 
-        softmax_w = tf.get_variable("softmax_w", [rnn_size, out_vocab_size])
+        self.softmax_w = tf.get_variable("softmax_w", [rnn_size, out_vocab_size])
         softmax_b = tf.get_variable("softmax_b", [out_vocab_size])
 
-        logits = tf.matmul(lm_outputs, softmax_w) + softmax_b
+        logits = tf.matmul(lm_outputs, self.softmax_w) + softmax_b
 
         # compute log perplexity
         loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
@@ -93,9 +93,18 @@ class WordLM(object):
         else:
             optimizer = tf.train.GradientDescentOptimizer(self.lr)
         self._train_op = optimizer.apply_gradients(zip(grads, tvars))
+        #self._train_op = optimizer.minimize(self._cost)
 
     def assign_lr(self, session, lr_value):
         session.run(tf.assign(self.lr, lr_value))
+
+    def assign_w(self, session, w_value):
+        session.run(tf.assign(self.softmax_w, w_value))
+
+
+    @property
+    def output_weights(self):
+        return self.softmax_w
 
     @property
     def input_data(self):
