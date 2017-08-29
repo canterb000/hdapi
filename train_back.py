@@ -123,8 +123,8 @@ def train(args):
         # Build models
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             mtrain = lm_model(args, is_training=True)
-        with tf.variable_scope("model", reuse=True, initializer=initializer):
-            mdev = lm_model(args, is_training=False)
+        #with tf.variable_scope("model", reuse=True, initializer=initializer):
+        #    mdev = lm_model(args, is_training=False)
 
         # save only the last model
         saver = tf.train.Saver(tf.all_variables(), max_to_keep=1)
@@ -144,25 +144,60 @@ def train(args):
             mtrain.assign_lr(sess, learning_rate)
             print("Learning rate: %.3f" % sess.run(mtrain.lr))
 
-            train_perplexity = run_epoch(sess, mtrain, train_data, data_loader, mtrain.train_op, verbose=True)
+            #train_perplexity = run_epoch(sess, mtrain, train_data, data_loader, mtrain.train_op, verbose=True)
+            #print("Train Perplexity: %.3f" % train_perplexity)
+	    data = train_data
+	    eval_op = mtrain.train_op
+	    m = mtrain
+	    verbose=True
+	    epoch_size = ((len(data) // m.batch_size) - 1) // m.num_steps
+	    start_time = time.time()
+	    costs = 0.0
+	    iters = 0
+	    state = m.initial_lm_state
+            print ("initial lm state:")
+	    print state
+	    print state[0]
+	    print state[0].eval()  
+	    state_input0 = state[0].eval()
+	    state_input1 = state[1].eval() 
+	    state_input = [state_input0, state_input1]
+	    for step, (x, y) in enumerate(data_loader.data_iterator(data, m.batch_size, m.num_steps)):
+		#        print ("step %s "% step)
+		#    print state[0]
+		cost, state, _ = sess.run([m.cost, m.final_state, eval_op],
+				             {m.input_data: x,
+				              m.targets: y,
+				              m.initial_lm_state: state_input})
+		state_input = state
+		costs += cost
+		iters += m.num_steps
+
+		if verbose and step % (epoch_size // 10) == 10:
+		    print("%.3f perplexity: %.3f speed: %.0f wps" %
+			  (step * 1.0 / epoch_size, np.exp(costs / iters),
+			   iters * m.batch_size / (time.time() - start_time)))
+
+	    train_perplexity = np.exp(costs / iters)
             print("Train Perplexity: %.3f" % train_perplexity)
 
-            dev_perplexity = run_epoch(sess, mdev, dev_data, data_loader, tf.no_op(), verbose=True)
-            print("Valid Perplexity: %.3f" % dev_perplexity)
+
+        #    dev_perplexity = run_epoch(sess, mdev, dev_data, data_loader, tf.no_op(), verbose=True)
+	#    print("Valid Perplexity: %.3f" % dev_perplexity)
 
             # write results to file
             fout.write("Epoch: %d\n" % (e + 1))
             fout.write("Learning rate: %.3f\n" % sess.run(mtrain.lr))
             fout.write("Train Perplexity: %.3f\n" % train_perplexity)
-            fout.write("Valid Perplexity: %.3f\n" % dev_perplexity)
+        #    fout.write("Valid Perplexity: %.3f\n" % dev_perplexity)
             fout.flush()
 
-            if dev_pp > dev_perplexity:
+            if dev_pp > train_perplexity:
                 print "Achieve highest perplexity on dev set, save model."
                 checkpoint_path = os.path.join(save_dir, 'modelkkk.ckpt')
                 saver.save(sess, checkpoint_path, global_step=e)
                 print "model saved to {}".format(checkpoint_path)
-                dev_pp = dev_perplexity
+                dev_pp = train_perplexity
             e += 1
 
         print("Training time: %.0f" % (time.time() - start))

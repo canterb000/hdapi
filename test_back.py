@@ -105,11 +105,11 @@ def test(test_args):
         if ckpt and ckpt.model_checkpoint_path:
 	    print(".............restore %s"%ckpt)
             saver.restore(sess, ckpt.model_checkpoint_path)
-        #tf.initialize_all_variables().run()
+        tf.initialize_all_variables().run()
 
 	#reset w
 	reset_w = tf.zeros([test_args.rnn_size, test_args.out_vocab_size])
-	#mtest.assign_w(sess, reset_w)
+	mtest.assign_w(sess, reset_w)
 	print(mtest.output_weights.eval())
         #test_perplexity = run_epoch(sess, mtest, test_data, data_loader, tf.no_op())
         test_perplexity = run_epoch(sess, mtest, test_data, data_loader, tf.no_op())

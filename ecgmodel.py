@@ -131,3 +131,7 @@ class RNNMODEL(object):
 	@property
 	def output_weights(self):
 		return self.weights
+
+	def assign_w(self, session, w_value):
+		session.run(tf.assign(self.weights, w_value))
+

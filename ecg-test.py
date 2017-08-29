@@ -124,6 +124,21 @@ args = parser.parse_args()
 
 m = RNNMODEL
 
+#input 
+#filename_queue = tf.train.string_input_producer(["test.tfrecords"])
+filename_queue = tf.train.string_input_producer(["test.tfrecords"])
+
+
+batchSize = 10
+min_after_dequeue = 8
+capacity = min_after_dequeue + 3 * batchSize
+num_threads = 1
+label, features = read_and_decode(filename_queue)
+
+batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
+
+
+
 print ("Begin testing...")
 # If using gpu:
 # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
@@ -143,21 +158,12 @@ with tf.Graph().as_default(), tf.Session() as sess:
 	if ckpt and ckpt.model_checkpoint_path:
 		saver.restore(sess, ckpt.model_checkpoint_path)
 		print("saver restoring...")
-		print(mtest.output_weights.eval())
 	#***************************************************************JUST FOR DEBUG, WITH ALL VAR DELETED
-	#tf.initialize_all_variables().run()
-        #input 
-        #filename_queue = tf.train.string_input_producer(["test.tfrecords"])
-        filename_queue = tf.train.string_input_producer(["test.tfrecords"])
-	
-
-        batchSize = 10
-        min_after_dequeue = 8
-        capacity = min_after_dequeue + 3 * batchSize
-        num_threads = 1
-        label, features = read_and_decode(filename_queue)
-
-        batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
+	tf.initialize_all_variables().run()
+	zero_weights = tf.zeros([args.n_hidden, args.vocab_size], dtype=tf.float32, name=None)
+	random_weights = tf.random_normal([args.n_hidden, args.vocab_size], mean=0.0, stddev=1.0, dtype=tf.float32, seed=None, name=None)
+	#mtest.assign_w(sess, random_weights)
+	print(mtest.output_weights.eval())
 
 
 	state = mtest.initial_lm_state

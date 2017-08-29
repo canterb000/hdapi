@@ -68,7 +68,7 @@ label, features = read_and_decode(filename_queue)
 
 # Parameters
 learning_rate = 0.001
-training_iters = 2000
+training_iters = 1000
 display_step = 1000
 n_input = 500
 
@@ -125,30 +125,29 @@ args = parser.parse_args()
 m = RNNMODEL
 
 save_dir = args.save_dir
+try:
+	os.stat(save_dir)
+except:
+	os.mkdir(save_dir)
 
+
+#input 
+batchSize = 10
+min_after_dequeue = 8
+capacity = min_after_dequeue + 3 * batchSize
+num_threads = 1
 
 with tf.Graph().as_default(), tf.Session() as sess:
-	initializer = tf.random_uniform_initializer(-args.init_scale, args.init_scale)
-
-	#input 
 	filename_queue = tf.train.string_input_producer(["train.tfrecords"])
-	filename_queue_dev = tf.train.string_input_producer(["test.tfrecords"])
-
-
-
-	batchSize = 10
-	min_after_dequeue = 8
-	capacity = min_after_dequeue + 3 * batchSize
-	num_threads = 1
 	label, features = read_and_decode(filename_queue)
-
 	batch_labels, batch_features = tf.train.shuffle_batch([label, features], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
 
-        dlabel, dfeatures = read_and_decode(filename_queue_dev)
+	filename_queue_dev = tf.train.string_input_producer(["test.tfrecords"])
+	dlabel, dfeatures = read_and_decode(filename_queue_dev)
+	dbatch_labels, dbatch_features = tf.train.shuffle_batch([dlabel, dfeatures], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
 
-        dbatch_labels, dbatch_features = tf.train.shuffle_batch([dlabel, dfeatures], batch_size= batchSize, num_threads= num_threads, capacity= capacity, min_after_dequeue = min_after_dequeue)
 
-
+	initializer = tf.random_uniform_initializer(-args.init_scale, args.init_scale)
 
 	# Build models
 	with tf.variable_scope("model", reuse=None, initializer=initializer):
