@@ -59,11 +59,14 @@ class RNNMODEL(object):
 		print(tf.get_variable_scope().reuse)
 		batch_size = 10
 		self._initial_lm_state = lm_cell.zero_state(batch_size, tf.float32)
+
+
 		print ("init2")
 		print(self._initial_lm_state)
 
 		# generate prediction
-		self.outputs, self.states = rnn.static_rnn(lm_cell, self.x_split, dtype=tf.float32)
+		#self.outputs, self.states = rnn.static_rnn(lm_cell, self.x_split, dtype=tf.float32)
+		self.outputs, self.states = tf.contrib.rnn.static_rnn(lm_cell, self.x_split, dtype=tf.float32)
 
 		# we only want the last output
 		#self.pred = tf.matmul(self.outputs[-1], self.weights['out']) + self.biases['out']

@@ -188,8 +188,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 
                 x_dr, y_dr = sess.run([dbatch_features, dbatch_labels])
                 dacc, dstate = sess.run([mdev.acc, mdev.final_state],
-                                             {mdev.input_data: x_r,
-                                              mdev.targets: y_r,
+                                             {mdev.input_data: x_dr,
+                                              mdev.targets: y_dr,
                                               mdev.initial_lm_state: dstate})
 
                 dacc_total += dacc
