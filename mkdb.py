@@ -8,15 +8,12 @@ import numpy as np
 from PIL import Image 
 import cPickle as p
 import shutil
-#import Image
 
 
-
-NUM_CLASS = 4
-#DATASET_FOLDER = "org"
-DATASET_FOLDER = "testdatabase"
+NUM_CLASS = 2
+DATASET_FOLDER = "ecgtestdatabase"
 OUTPUT_BATCH_PATH = "testbatch_1"
-length = width = 32
+length = width = 32 #32
 picsize = length * width
 
 def main(argv):
@@ -47,13 +44,12 @@ def main(argv):
                             resize_all(index, data_subset_dir, subfilename, savedir)
 
     dataarr = np.array(datalist, dtype = np.uint8)
-    np.set_printoptions(threshold=np.inf)  
+    np.set_printoptions(threshold = np.inf)  
 
     data['batch_label'.encode('utf-8')]='testing batch 1 of 1'.encode('utf-8')
     data.setdefault('data'.encode('utf-8'), dataarr)    
     data.setdefault('filenames'.encode('utf-8'), filenamelist)
     data.setdefault('labels'.encode('utf-8'), labellist)
-
 
     output = open(OUTPUT_BATCH_PATH, 'wb')
     p.dump(data, output)
@@ -121,7 +117,7 @@ def resize_all(index, cwd, currentpng, savedir):
     listf = list0 + list1 + list2
 
     os.remove(outname)
-    print "removed"
+    #print "removed"
 
     datalist.append(listf)
     labellist.append(index)
